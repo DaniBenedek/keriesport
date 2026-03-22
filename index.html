@@ -645,7 +645,7 @@
       <div class="hero-content">
         <div class="hero-left">
           <h1>Legyen a <br><span class="hero-gradient">te csapatod</span><br>A győztes</h1>
-          <p class="hero-tagline">Rakj össze egy csapatot. Képviseld az osztályod. Képviseld az iskolánkat az esportban</p>
+          <p class="hero-tagline">Rakj össze egy cs2 csapatot. Képviseld az osztályod. Képviseld az iskolánkat az esportban</p>
           <div class="hero-meta">
             <div class="meta-item">
               <h4>Március 30-31</h4>
@@ -682,13 +682,16 @@
       <div class="rule-card">
         <div class="rule-icon">🏆</div>
         <h3>Verseny formája</h3>
-        <p>Átlagos 5 az 5 ellen. Minden csapat mérközik minden csapat ellen két különböző pályán aki a legtöbb pontot szerzi az jut tovább a döntőbe.</p>
+        <p>egyszerre két csapat lesz fent a 304-es teremben saját periféria (billenytűzet,egér) használata engedélyezett.
+          A tanár a dikákok ellenőrzése után elindítja a mérkőzést, a nyerő csapat 10 ponttal gazdagodik.
+          Az egész verseny végén a legtöbb ponttal rendelkező csapat fog játszani más iskolák ellen a fődíjért.
+        </p>
       </div>
       <div class="rule-card">
         <div class="rule-icon">📋</div>
         <h3>Szabályok & részvétel</h3>
         <p>Minden játékost regisztrálni kell, mivel a verseny iskola időben zajlik és ezt a tanárok felé így tudjuk jelezni.
-            Emellett ha a csapat egyik játékosa nemtud részt venni csere alkalmazható, ha a csapat nem tud játszani pontlevonás.
+            Emellett ha a csapat egyik játékosa nemtud részt venni csere alkalmazható, ha a csapat nem tud játszani 10 pont levonás.
         </p>
       </div>
       <div class="rule-card">
@@ -741,24 +744,27 @@
             <p style="font-weight: 700;">📢 Jelentkezési határidő: <strong>március 29.</strong></p>
             <p style="margin-top: 10px;">Döntő: április 15. · iskola tornaterme</p>
           </div>
+          <div style="margin-top: 30px; background: #f5f7ff; border-radius: 30px; padding: 25px;">
+            <p style="font-weight: 700;">❌ Bármiféle probléma esetén <strong>keriesport@gmail.com</strong></p>
+          </div>
         </div>
         <div>
           <form id="application-form">
             <div class="form-group">
-              <label>Csapat név *</label>
+              <label for="teamName">Csapat név *</label>
               <input type="text" id="teamName" required placeholder="pl. Csipet csapat">
             </div>
             <div class="form-group">
-              <label>Kapitány email *</label>
+              <label for="captainEmail">Kapitány email *</label>
               <input type="email" id="captainEmail" required placeholder="pelda@keri.mako.hu">
             </div>
             <div class="form-group">
-              <label>5 játékos (név / becenév) *</label>
+              <label for="players">5 játékos (név / becenév) *</label>
               <textarea id="players" rows="3" required placeholder="Kis(raketa)Csaba,Nagy(Feco)Ferenc,Álmos(célzóvíz)Aurél,Jakob(öcsi)Ákos,Malaj(Hollywood)Zsolt"></textarea>
               <p style="font-size:0.75rem; color:#888; margin-top:5px;">Pontosan 5 fő, vesszővel elválasztva</p>
             </div>
             <div class="form-group">
-              <label>Osztályfőnök</label>
+              <label for="teacher">Osztályfőnök</label>
               <input type="text" id="teacher" placeholder="pl. Vidéki Gyula Milán">
             </div>
             <button type="submit" class="btn-submit" id="submitBtn">Jelentkezés beküldése →</button>
