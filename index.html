@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap">
   <link href="https://api.fontshare.com/v2/css?f[]=clash-display@200,400,700,500,600&display=swap" rel="stylesheet">
   <style>
-    /* All existing styles remain the same */
+    /* ... (keep all your existing styles) ... */
     * {
       margin: 0;
       padding: 0;
@@ -554,6 +554,13 @@
       margin-left: 10px;
     }
 
+    .user-status-panel {
+      background: #f5f7ff;
+      border-radius: 30px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
     footer {
       padding: 60px 0 30px;
       border-top: 1px solid #eaeef5;
@@ -755,6 +762,7 @@
             </div>
             <button type="submit" class="btn-submit" id="submitBtn">Jelentkezés beküldése →</button>
           </form>
+          <div id="user-status-panel"></div>
         </div>
       </div>
     </div>
@@ -774,12 +782,11 @@
   <script>
     // ========== CONFIGURATION ==========
     const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbzvwoX37al2x4_sNIx1OYcTUVYlKkVFEIQd66h89uMy-gKrXuugtNtK66UAKwhzsvLSUQ/exec';
-    const SECRET_KEY = 'K3r1_G4m3s_2026_S3cur3_K3y_!@#_Sp0rt'; // Add this to your Apps Script
+    const SECRET_KEY = 'K3r1_G4m3s_2026_S3cur3_K3y_!@#_Sp0rt';
     
-    // Bad words filter (Hungarian and common English)
-    const BAD_WORDS = ['fuck', 'shit', 'bitch', 'kurva', 'fasz', 'picsa', 'geci', 'basz', 'segg', 'fasz', 'kurva'];
+    // Bad words filter
+    const BAD_WORDS = ['fuck', 'shit', 'bitch', 'kurva', 'fasz', 'picsa', 'geci', 'basz', 'segg'];
     
-    // Track if user has already registered
     let userTeam = null;
     let isEditMode = false;
     
@@ -836,112 +843,102 @@
       return [];
     }
     
-    // Check if user has already registered (by browser fingerprint)
+    // Display user status panel (this persists and doesn't get overwritten)
+    function updateUserStatusPanel() {
+      const panel = document.getElementById('user-status-panel');
+      if (!panel) return;
+      
+      if (userTeam) {
+        panel.innerHTML = `
+          <div class="user-status-panel">
+            <p style="font-weight: 600; margin-bottom: 10px;">🎮 A TE CSAPATOD: <strong>${escapeHtml(userTeam.name)}</strong></p>
+            <button onclick="editRegistration()" class="edit-btn">✏️ Módosítás</button>
+            <button onclick="deleteRegistration()" class="delete-btn">🗑️ Törlés</button>
+            <p style="font-size: 0.8rem; color: #6b6b8b; margin-top: 10px;">📧 ${escapeHtml(userTeam.captainEmail)}</p>
+          </div>
+        `;
+      } else {
+        panel.innerHTML = '';
+      }
+    }
+    
     function checkUserRegistration(teams) {
       const storedTeam = localStorage.getItem('myTeam');
       if (storedTeam) {
         try {
           userTeam = JSON.parse(storedTeam);
-          // Check if team still exists in the list
-          const teamExists = teams.some(t => t.email === userTeam.captainEmail);
+          const teamExists = teams.some(t => t.captainEmail === userTeam.captainEmail);
           if (teamExists) {
-            disableRegistrationForm();
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+              submitBtn.disabled = true;
+              submitBtn.textContent = '✅ Már regisztráltál!';
+            }
+            updateUserStatusPanel();
           } else {
-            // Team was removed, allow new registration
             localStorage.removeItem('myTeam');
             userTeam = null;
-            enableRegistrationForm();
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Jelentkezés beküldése →';
+            }
+            updateUserStatusPanel();
           }
         } catch (e) {
           localStorage.removeItem('myTeam');
           userTeam = null;
-          enableRegistrationForm();
+          updateUserStatusPanel();
         }
       } else {
-        enableRegistrationForm();
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Jelentkezés beküldése →';
+        }
+        updateUserStatusPanel();
       }
-    }
-    
-    function disableRegistrationForm() {
-      const submitBtn = document.getElementById('submitBtn');
-      submitBtn.disabled = true;
-      submitBtn.textContent = '✅ Már regisztráltál!';
-      
-      // Show edit option
-      const formContainer = document.querySelector('.apply-grid');
-      const editPanel = document.createElement('div');
-      editPanel.id = 'edit-panel';
-      editPanel.style.marginTop = '20px';
-      editPanel.style.padding = '20px';
-      editPanel.style.background = '#f5f7ff';
-      editPanel.style.borderRadius = '30px';
-      editPanel.innerHTML = `
-        <p style="font-weight: 600; margin-bottom: 10px;">🎮 A csapatod: <strong>${escapeHtml(userTeam.name)}</strong></p>
-        <button onclick="editRegistration()" class="edit-btn">✏️ Módosítás</button>
-        <button onclick="deleteRegistration()" class="delete-btn">🗑️ Törlés</button>
-      `;
-      
-      // Remove old panel if exists
-      const oldPanel = document.getElementById('edit-panel');
-      if (oldPanel) oldPanel.remove();
-      formContainer.appendChild(editPanel);
-    }
-    
-    function enableRegistrationForm() {
-      const submitBtn = document.getElementById('submitBtn');
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Jelentkezés beküldése →';
-      
-      const oldPanel = document.getElementById('edit-panel');
-      if (oldPanel) oldPanel.remove();
     }
     
     async function editRegistration() {
       if (!userTeam) return;
       
-      // Fill form with existing data
       document.getElementById('teamName').value = userTeam.name;
       document.getElementById('captainEmail').value = userTeam.captainEmail;
       document.getElementById('players').value = userTeam.players;
       document.getElementById('teacher').value = userTeam.teacher || '';
       
       isEditMode = true;
-      
-      // Change button text
       const submitBtn = document.getElementById('submitBtn');
       submitBtn.textContent = '💾 Módosítások mentése';
       submitBtn.disabled = false;
       
-      // Scroll to form
       document.getElementById('apply').scrollIntoView({ behavior: 'smooth' });
-      
       showToast('✏️ Szerkesztési mód - Módosítsd az adatokat és mentsd el');
     }
     
     async function deleteRegistration() {
       if (!userTeam) return;
       
-      if (confirm(`Biztosan törölni szeretnéd a "${userTeam.name}" csapat jelentkezését? Ez a művelet nem visszavonható!`)) {
-        // Remove from localStorage
+      if (confirm(`Biztosan törölni szeretnéd a "${userTeam.name}" csapat jelentkezését?`)) {
         localStorage.removeItem('myTeam');
         userTeam = null;
         isEditMode = false;
-        
-        // Show success
         showToast('🗑️ Jelentkezésed törölve! Újra jelentkezhetsz.');
-        enableRegistrationForm();
         
-        // Clear form
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Jelentkezés beküldése →';
+        
+        updateUserStatusPanel();
         document.getElementById('application-form').reset();
         
-        // Reload teams to reflect removal
         setTimeout(() => {
           loadFromGoogleSheets('teams', displayTeams);
-        }, 1000);
+        }, 500);
       }
     }
     
-    // Make functions global for HTML buttons
     window.editRegistration = editRegistration;
     window.deleteRegistration = deleteRegistration;
     
@@ -1006,10 +1003,10 @@
       const container = document.getElementById('teams-container');
       if (!teams || teams.length === 0) {
         container.innerHTML = `<div class="empty-state"><h3>⚡ Még nincs regisztrált csapat</h3><p style="margin: 15px 0 25px;">Legyél te az első aki összeállítja a csapatod.</p><button class="btn-primary" onclick="document.getElementById('apply').scrollIntoView()">Jelentkezés most</button></div>`;
+        checkUserRegistration(teams);
         return;
       }
       
-      // Check user registration after loading teams
       checkUserRegistration(teams);
       
       const grid = document.createElement('div');
@@ -1054,13 +1051,6 @@
         displayFunction(data);
       } catch (error) {
         console.error(`Error loading ${type}:`, error);
-        if (type === 'teams') {
-          document.getElementById('teams-container').innerHTML = `<div class="empty-state"><h3>⚠️ Hiba a csapatok betöltésekor</h3><p>Kérjük, frissítsd az oldalt.</p></div>`;
-        } else if (type === 'schedule') {
-          document.getElementById('schedule-container').innerHTML = `<div class="empty-state"><h3>📅 Hiba a menetrend betöltésekor</h3><p>Kérjük, frissítsd az oldalt.</p></div>`;
-        } else if (type === 'matches') {
-          document.getElementById('matches-container').innerHTML = `<div class="empty-state"><h3>❌ Hiba az eredmények betöltésekor</h3><p>Kérjük, frissítsd az oldalt.</p></div>`;
-        }
       }
     }
     
@@ -1091,24 +1081,14 @@
       const playersInput = document.getElementById('players').value.trim();
       const teacher = document.getElementById('teacher').value.trim();
       
-      // Validate inputs
       const nameError = validateTeamName(teamName);
-      if (nameError) {
-        showToast(nameError, true);
-        return;
-      }
+      if (nameError) { showToast(nameError, true); return; }
       
       const emailError = validateEmail(captainEmail);
-      if (emailError) {
-        showToast(emailError, true);
-        return;
-      }
+      if (emailError) { showToast(emailError, true); return; }
       
       const playersError = validatePlayers(playersInput);
-      if (playersError) {
-        showToast(playersError, true);
-        return;
-      }
+      if (playersError) { showToast(playersError, true); return; }
       
       const submitBtn = document.getElementById('submitBtn');
       const originalText = submitBtn.textContent;
@@ -1123,35 +1103,33 @@
         registeredAt: new Date().toISOString()
       };
       
-      // If in edit mode, we need to handle update
       if (isEditMode && userTeam) {
-        // For now, we'll just save new and keep old in localStorage
-        // In production, you'd want to update in Google Sheets too
         localStorage.setItem('myTeam', JSON.stringify(newTeam));
         userTeam = newTeam;
         showToast(`✅ Sikeres módosítás! Csapat: ${teamName}`);
         isEditMode = false;
-        disableRegistrationForm();
+        submitBtn.textContent = 'Jelentkezés beküldése →';
+        updateUserStatusPanel();
       } else {
         const success = await saveTeamToGoogleSheets(newTeam);
-        
         if (success) {
           localStorage.setItem('myTeam', JSON.stringify(newTeam));
           userTeam = newTeam;
           showToast(`✅ Sikeres jelentkezés! Csapat: ${teamName}`);
-          disableRegistrationForm();
+          submitBtn.disabled = true;
+          submitBtn.textContent = '✅ Már regisztráltál!';
+          updateUserStatusPanel();
         } else {
-          showToast('❌ Hiba történt a jelentkezés során. Próbáld újra!', true);
+          showToast('❌ Hiba történt. Próbáld újra!', true);
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
         }
       }
       
       document.getElementById('application-form').reset();
-      submitBtn.textContent = originalText;
-      
-      // Reload teams
       setTimeout(() => {
         loadFromGoogleSheets('teams', displayTeams);
-      }, 1000);
+      }, 500);
     });
     
     function startAutoRefresh() {
@@ -1162,7 +1140,6 @@
       }, 30000);
     }
     
-    // Initialize
     loadFromGoogleSheets('teams', displayTeams);
     loadFromGoogleSheets('schedule', displaySchedule);
     loadFromGoogleSheets('matches', displayMatches);
