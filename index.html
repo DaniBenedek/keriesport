@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap">
   <link href="https://api.fontshare.com/v2/css?f[]=clash-display@200,400,700,500,600&display=swap" rel="stylesheet">
   <style>
-    /* ... (keep all your existing styles) ... */
     * {
       margin: 0;
       padding: 0;
@@ -525,13 +524,14 @@
     .edit-btn, .delete-btn {
       background: #f1f3fa;
       border: none;
-      padding: 8px 16px;
+      padding: 10px 20px;
       border-radius: 30px;
       cursor: pointer;
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       margin-top: 12px;
-      margin-right: 8px;
+      margin-right: 10px;
       transition: 0.2s;
+      font-weight: 600;
     }
 
     .edit-btn:hover {
@@ -555,10 +555,11 @@
     }
 
     .user-status-panel {
-      background: #f5f7ff;
+      background: linear-gradient(135deg, #f5f7ff, #eef2ff);
       border-radius: 30px;
       padding: 20px;
       margin-top: 20px;
+      border: 1px solid #e0e7ff;
     }
 
     footer {
@@ -781,7 +782,7 @@
 
   <script>
     // ========== CONFIGURATION ==========
-    const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbzvwoX37al2x4_sNIx1OYcTUVYlKkVFEIQd66h89uMy-gKrXuugtNtK66UAKwhzsvLSUQ/exec';
+    const GOOGLE_SHEETS_API = 'https://script.google.com/macros/s/AKfycbwTciKZ56X6M5q757ZVE9SRMfg9t9h2O2ZacgVnTfau1oKfddRharnePftVRxz35freqg/exec';
     const SECRET_KEY = 'K3r1_G4m3s_2026_S3cur3_K3y_!@#_Sp0rt';
     
     // Bad words filter
@@ -789,6 +790,7 @@
     
     let userTeam = null;
     let isEditMode = false;
+    let currentTeams = [];
     
     function containsBadWords(text) {
       if (!text) return false;
@@ -843,7 +845,6 @@
       return [];
     }
     
-    // Display user status panel (this persists and doesn't get overwritten)
     function updateUserStatusPanel() {
       const panel = document.getElementById('user-status-panel');
       if (!panel) return;
@@ -863,12 +864,15 @@
     }
     
     function checkUserRegistration(teams) {
+      currentTeams = teams;
       const storedTeam = localStorage.getItem('myTeam');
       if (storedTeam) {
         try {
-          userTeam = JSON.parse(storedTeam);
-          const teamExists = teams.some(t => t.captainEmail === userTeam.captainEmail);
+          const stored = JSON.parse(storedTeam);
+          const teamExists = teams.some(t => t.captainEmail === stored.captainEmail);
           if (teamExists) {
+            userTeam = teams.find(t => t.captainEmail === stored.captainEmail);
+            localStorage.setItem('myTeam', JSON.stringify(userTeam));
             const submitBtn = document.getElementById('submitBtn');
             if (submitBtn) {
               submitBtn.disabled = true;
@@ -920,22 +924,42 @@
     async function deleteRegistration() {
       if (!userTeam) return;
       
-      if (confirm(`Biztosan törölni szeretnéd a "${userTeam.name}" csapat jelentkezését?`)) {
-        localStorage.removeItem('myTeam');
-        userTeam = null;
-        isEditMode = false;
-        showToast('🗑️ Jelentkezésed törölve! Újra jelentkezhetsz.');
-        
+      if (confirm(`Biztosan törölni szeretnéd a "${userTeam.name}" csapat jelentkezését? Ez a művelet nem visszavonható!`)) {
         const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Jelentkezés beküldése →';
+        submitBtn.textContent = 'Törlés folyamatban...';
+        submitBtn.disabled = true;
         
-        updateUserStatusPanel();
-        document.getElementById('application-form').reset();
-        
-        setTimeout(() => {
-          loadFromGoogleSheets('teams', displayTeams);
-        }, 500);
+        try {
+          const response = await fetch(GOOGLE_SHEETS_API, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'delete',
+              secret: SECRET_KEY,
+              captainEmail: userTeam.captainEmail
+            })
+          });
+          
+          localStorage.removeItem('myTeam');
+          userTeam = null;
+          isEditMode = false;
+          showToast('🗑️ Jelentkezésed törölve! Újra jelentkezhetsz.');
+          
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Jelentkezés beküldése →';
+          
+          updateUserStatusPanel();
+          document.getElementById('application-form').reset();
+          
+          setTimeout(() => {
+            loadFromGoogleSheets('teams', displayTeams);
+          }, 500);
+        } catch (error) {
+          showToast('❌ Hiba történt a törlés során', true);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Jelentkezés beküldése →';
+        }
       }
     }
     
@@ -1054,17 +1078,23 @@
       }
     }
     
-    async function saveTeamToGoogleSheets(teamData) {
+    async function saveTeamToGoogleSheets(teamData, isUpdate = false) {
       try {
+        const payload = {
+          type: isUpdate ? 'update' : 'team',
+          secret: SECRET_KEY,
+          ...teamData
+        };
+        
+        if (isUpdate && userTeam) {
+          payload.originalEmail = userTeam.captainEmail;
+        }
+        
         const response = await fetch(GOOGLE_SHEETS_API, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'team',
-            secret: SECRET_KEY,
-            ...teamData
-          })
+          body: JSON.stringify(payload)
         });
         return true;
       } catch (error) {
@@ -1103,15 +1133,21 @@
         registeredAt: new Date().toISOString()
       };
       
+      let success = false;
+      
       if (isEditMode && userTeam) {
-        localStorage.setItem('myTeam', JSON.stringify(newTeam));
-        userTeam = newTeam;
-        showToast(`✅ Sikeres módosítás! Csapat: ${teamName}`);
-        isEditMode = false;
-        submitBtn.textContent = 'Jelentkezés beküldése →';
-        updateUserStatusPanel();
+        success = await saveTeamToGoogleSheets({ newTeam, originalEmail: userTeam.captainEmail }, true);
+        if (success) {
+          localStorage.setItem('myTeam', JSON.stringify(newTeam));
+          userTeam = newTeam;
+          showToast(`✅ Sikeres módosítás! Csapat: ${teamName}`);
+          isEditMode = false;
+          submitBtn.textContent = '✅ Már regisztráltál!';
+          submitBtn.disabled = true;
+          updateUserStatusPanel();
+        }
       } else {
-        const success = await saveTeamToGoogleSheets(newTeam);
+        success = await saveTeamToGoogleSheets(newTeam, false);
         if (success) {
           localStorage.setItem('myTeam', JSON.stringify(newTeam));
           userTeam = newTeam;
@@ -1119,17 +1155,19 @@
           submitBtn.disabled = true;
           submitBtn.textContent = '✅ Már regisztráltál!';
           updateUserStatusPanel();
-        } else {
-          showToast('❌ Hiba történt. Próbáld újra!', true);
-          submitBtn.disabled = false;
-          submitBtn.textContent = originalText;
         }
+      }
+      
+      if (!success) {
+        showToast('❌ Hiba történt. Próbáld újra!', true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
       }
       
       document.getElementById('application-form').reset();
       setTimeout(() => {
         loadFromGoogleSheets('teams', displayTeams);
-      }, 500);
+      }, 1000);
     });
     
     function startAutoRefresh() {
